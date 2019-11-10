@@ -3,7 +3,8 @@ import torch.nn as nn
 import torch
 from PIL import Image
 import numpy as np
-from typing import Tuple
+from typing import Tuple,Sequence
+import pickle as pkl
 
 
 def get_img(img_path: str):
@@ -17,17 +18,25 @@ def get_img(img_path: str):
 def get_out(model: nn.Module, img: np.ndarray, device: 'str'):
     def transpose_reshape(input: torch.Tensor, reshape: Tuple[int]):
         return input.permute((0, 2, 3, 1)).reshape(reshape)
-
+    reshapes=[[1,-1,1],[1,-1,4],[1,-1,2],[1,-1,1]]
     rpn_outs = model.forward_dummy(torch.Tensor(img).unsqueeze(0).to(device))
     print(len(rpn_outs))
-
-    cls_score, bbox_pred, shape_pred, loc_pred = [], [], [], []
+    rpn_outs_list=[[],[],[],[]]
+    #cls_score, bbox_pred, shape_pred, loc_pred = [], [], [], []
     for i, out in enumerate(rpn_outs):
         print('i:{}|out:{}'.format(i, len(out)))
         for j, o in enumerate(out):
-            o = o.permute((0, 2, 3, 1))
+            o = transpose_reshape(o,reshapes[i])
+            rpn_outs_list[i].append(o)
             print('j:{}|o:{}'.format(j, o.shape))
+        rpn_outs_list[i]=torch.cat(rpn_outs_list[i],1).cpu().numpy()
+    names=['cls_score','bbox_pred','shape_pred','loc_pred']
+    outs_dict=dict(zip(names,rpn_outs_list))
+    return outs_dict
 
+def save(sequences:Sequence,out_files:str):
+    with open(out_files,'wb') as f:
+        pkl.dump(sequences,f,protocol=2)
 
 if __name__ == '__main__':
     from importlib import import_module
@@ -46,5 +55,6 @@ if __name__ == '__main__':
     # name,data=list(param)
     # print("i:{}|name:{}|shape:{}".format(i,name,data.shape))
     # print(model.state_dict())
-    get_out(model, img, device)
+    outs_dict=get_out(model, img, device)
+    save(outs_dict,'../path/torch_rpn_outs.pkl')
 
