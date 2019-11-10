@@ -9,7 +9,7 @@ import pickle as pkl
 
 def get_img(img_path: str):
     img: Image.Image = Image.open(img_path).convert('RGB')
-    img = img.resize((320, 320))
+    #img = img.resize((320, 320))
     img = np.asarray(img).transpose((2, 0, 1))
     return img
 
@@ -19,7 +19,7 @@ def get_out(model: nn.Module, img: np.ndarray, device: 'str'):
     def transpose_reshape(input: torch.Tensor, reshape: Tuple[int]):
         return input.permute((0, 2, 3, 1)).reshape(reshape)
     reshapes=[[1,-1,1],[1,-1,4],[1,-1,2],[1,-1,1]]
-    rpn_outs = model.forward_dummy(torch.Tensor(img).unsqueeze(0).to(device))
+    rpn_outs = model.forward_dummy(torch.Tensor(img.astype('float32')).unsqueeze(0).to(device))
     print(len(rpn_outs))
     rpn_outs_list=[[],[],[],[]]
     #cls_score, bbox_pred, shape_pred, loc_pred = [], [], [], []
@@ -51,7 +51,7 @@ if __name__ == '__main__':
     weight = torch.load('../path/ga_rpn_r50_caffe_fpn_1x_20190513-95e91886.pth')
     state_dict = weight.get('state_dict')
     model.load_state_dict(state_dict)
-    img_path = '../path/1.png'
+    img_path = '../path/320_320.jpg'
     img = get_img(img_path)
     print(img.shape, type(model.state_dict()))
     # for i,param in enumerate(model.state_dict().items()):
