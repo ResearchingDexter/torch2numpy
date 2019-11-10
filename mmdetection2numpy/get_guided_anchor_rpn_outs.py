@@ -9,7 +9,7 @@ import pickle as pkl
 
 def get_img(img_path: str):
     img: Image.Image = Image.open(img_path).convert('RGB')
-    img = img.resize((640, 320))
+    img = img.resize((320, 320))
     img = np.asarray(img).transpose((2, 0, 1))
     return img
 
@@ -32,11 +32,14 @@ def get_out(model: nn.Module, img: np.ndarray, device: 'str'):
         rpn_outs_list[i]=torch.cat(rpn_outs_list[i],1).cpu().numpy()
     names=['cls_score','bbox_pred','shape_pred','loc_pred']
     outs_dict=dict(zip(names,rpn_outs_list))
+    for i,out in enumerate(outs_dict.items()):
+        print("i:{}|name:{}|data:{}".format(i,out[0],out[1].shape))
     return outs_dict
 
 def save(sequences:Sequence,out_files:str):
     with open(out_files,'wb') as f:
         pkl.dump(sequences,f,protocol=2)
+    print("save to:{}".format(out_files))
 
 if __name__ == '__main__':
     from importlib import import_module
