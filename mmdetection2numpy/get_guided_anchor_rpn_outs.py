@@ -15,23 +15,33 @@ def get_img(img_path: str):
 
 
 @torch.no_grad()
-def get_out(model: nn.Module, img: np.ndarray, device: 'str'):
+def get_out(model: nn.Module, img: np.ndarray, device: 'str',names=None,transform=True):
     def transpose_reshape(input: torch.Tensor, reshape: Tuple[int]):
         return input.permute((0, 2, 3, 1)).reshape(reshape)
     reshapes=[[1,-1,1],[1,-1,4],[1,-1,2],[1,-1,1]]
-    rpn_outs = model.forward_dummy(torch.Tensor(img.astype('float32')).unsqueeze(0).to(device))
+    rpn_outs = model(torch.Tensor(img.astype('float32')).unsqueeze(0).to(device))
     print(len(rpn_outs))
-    rpn_outs_list=[[],[],[],[]]
-    #cls_score, bbox_pred, shape_pred, loc_pred = [], [], [], []
-    for i, out in enumerate(rpn_outs):
-        print('i:{}|out:{}'.format(i, len(out)))
-        for j, o in enumerate(out):
-            o = transpose_reshape(o,reshapes[i])
-            rpn_outs_list[i].append(o)
-            print('j:{}|o:{}'.format(j, o.shape))
-        rpn_outs_list[i]=torch.cat(rpn_outs_list[i],1).cpu().numpy()
-    names=['cls_score','bbox_pred','shape_pred','loc_pred']
-    outs_dict=dict(zip(names,rpn_outs_list))
+    rpn_outs_list=[]
+    if transform==False:
+        for i,out in enumerate(rpn_outs):
+            print("i:{}|out:{}".format(i,out.shape))
+            rpn_outs_list.append(out.cpu().numpy())
+    else:
+        rpn_outs_list=[[],[],[],[]]
+        #cls_score, bbox_pred, shape_pred, loc_pred = [], [], [], []
+        for i, out in enumerate(rpn_outs):
+            print('i:{}|out:{}'.format(i, len(out)))
+            for j, o in enumerate(out):
+                o = transpose_reshape(o,reshapes[i])
+                rpn_outs_list[i].append(o)
+                print('j:{}|o:{}'.format(j, o.shape))
+            rpn_outs_list[i]=torch.cat(rpn_outs_list[i],1).cpu().numpy()
+    #names=['cls_score','bbox_pred','shape_pred','loc_pred']
+    if names is not None:
+        assert len(names)==len(rpn_outs_list),'the length must be equal,but got:{}!={}'.format(len(names),len(outs))
+        outs_dict=dict(zip(names,rpn_outs_list))
+    else:
+        outs_dict=rpn_outs_list
     for i,out in enumerate(outs_dict.items()):
         print("i:{}|name:{}|data:{}".format(i,out[0],out[1].shape))
     return outs_dict
@@ -48,6 +58,7 @@ if __name__ == '__main__':
     device = 'cuda'
     model = build_detector(config.model, train_cfg=config.train_cfg, test_cfg=config.test_cfg)
     model.to(device)
+    model.eval()
     weight = torch.load('../path/ga_rpn_r50_caffe_fpn_1x_20190513-95e91886.pth')
     state_dict = weight.get('state_dict')
     model.load_state_dict(state_dict)
@@ -58,6 +69,8 @@ if __name__ == '__main__':
     # name,data=list(param)
     # print("i:{}|name:{}|shape:{}".format(i,name,data.shape))
     # print(model.state_dict())
-    outs_dict=get_out(model, img, device)
-    save(outs_dict,'../path/torch_rpn_outs.pkl')
+    #names=['0','1','2','3','4']#necks
+    names = ['cls_score', 'bbox_pred', 'shape_pred', 'loc_pred']
+    outs_dict=get_out(model.forward_dummy, img, device,names,True)
+    #save(outs_dict,'../path/torch_head_outs.pkl')
 
